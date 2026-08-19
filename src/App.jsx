@@ -1,4 +1,4 @@
- import { useEffect, useMemo, useState } from 'react'
+ import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 
 function App() {
@@ -51,6 +51,7 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
+  const backupInputRef = useRef(null)
 
   const [form, setForm] = useState({
     amount: '',
@@ -265,6 +266,97 @@ function App() {
 
     setMonthlyBudgets((prev) => ({ ...prev, [selectedMonth]: amount }))
     setIsBudgetModalOpen(false)
+  }
+
+  function downloadFile(content, fileName, type) {
+    const blob = new Blob([content], { type })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = fileName
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  function escapeCsv(value) {
+    const text = String(value ?? '')
+    return `"${text.replaceAll('"', '""')}"`
+  }
+
+  function exportCsv() {
+    const header = ['Tür', 'Kategori', 'Tutar', 'Tarih', 'Açıklama']
+    const rows = transactions.map((item) => [
+      item.type === 'income' ? 'Gelir' : 'Gider',
+      item.category,
+      item.amount,
+      item.date,
+      item.note || '',
+    ])
+    const csv = [header, ...rows]
+      .map((row) => row.map(escapeCsv).join(','))
+      .join('\n')
+
+    downloadFile(
+      `\uFEFF${csv}`,
+      `butce-kocu-islemler-${new Date().toISOString().slice(0, 10)}.csv`,
+      'text/csv;charset=utf-8'
+    )
+  }
+
+  function exportBackup() {
+    const backup = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      transactions,
+      monthlyBudgets,
+    }
+
+    downloadFile(
+      JSON.stringify(backup, null, 2),
+      `butce-kocu-yedek-${new Date().toISOString().slice(0, 10)}.json`,
+      'application/json'
+    )
+  }
+
+  async function importBackup(event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+
+    try {
+      const backup = JSON.parse(await file.text())
+      const hasValidTransactions =
+        Array.isArray(backup.transactions) &&
+        backup.transactions.every((item) =>
+          item &&
+          ['income', 'expense'].includes(item.type) &&
+          typeof item.category === 'string' &&
+          Number.isFinite(Number(item.amount)) &&
+          typeof item.date === 'string'
+        )
+      const hasValidBudgets =
+        backup.monthlyBudgets &&
+        typeof backup.monthlyBudgets === 'object' &&
+        !Array.isArray(backup.monthlyBudgets)
+
+      if (!hasValidTransactions || !hasValidBudgets) {
+        throw new Error('Geçersiz yedek biçimi')
+      }
+
+      const confirmed = window.confirm(
+        'Yedek geri yüklendiğinde mevcut işlemler ve bütçe limitleri değiştirilecek. Devam edilsin mi?'
+      )
+      if (!confirmed) return
+
+      setTransactions(backup.transactions.map((item) => ({
+        ...item,
+        amount: Number(item.amount),
+      })))
+      setMonthlyBudgets(backup.monthlyBudgets)
+      alert('Yedek başarıyla geri yüklendi.')
+    } catch {
+      alert('Bu dosya geçerli bir BütçeKoçu yedeği değil.')
+    }
   }
 
   return (
@@ -538,6 +630,29 @@ function App() {
               </div>
             </div>
           ))}
+        </section>
+
+        <section className="data-tools">
+          <div>
+            <p className="section-eyebrow">Veri yönetimi</p>
+            <h3>Verilerini güvende tut</h3>
+            <p>İşlemlerini tabloya aktarabilir veya tam bir yedek oluşturabilirsin.</p>
+          </div>
+
+          <div className="data-tool-actions">
+            <button onClick={exportCsv}>CSV İndir</button>
+            <button onClick={exportBackup}>Yedek Al</button>
+            <button onClick={() => backupInputRef.current?.click()}>
+              Yedeği Geri Yükle
+            </button>
+            <input
+              ref={backupInputRef}
+              className="backup-input"
+              type="file"
+              accept="application/json,.json"
+              onChange={importBackup}
+            />
+          </div>
         </section>
       </main>
 

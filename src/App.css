@@ -358,6 +358,55 @@ main {
   padding: 25px;
 }
 
+.data-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  margin-top: 25px;
+  padding: 25px;
+  border: 1px solid #e8edf4;
+  border-radius: 18px;
+  background: white;
+}
+
+.data-tools h3 {
+  margin: 0;
+}
+
+.data-tools > div > p:last-child {
+  margin: 7px 0 0;
+  color: #68758a;
+  font-size: 14px;
+}
+
+.data-tool-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 9px;
+}
+
+.data-tool-actions button {
+  border: 1px solid #dce3ec;
+  border-radius: 10px;
+  padding: 10px 13px;
+  background: white;
+  color: #27364d;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.data-tool-actions button:nth-child(2) {
+  border-color: #172033;
+  background: #172033;
+  color: white;
+}
+
+.backup-input {
+  display: none;
+}
+
 .transaction-filters {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) 170px 190px;
@@ -675,6 +724,16 @@ main {
 
   .transaction-filters {
     grid-template-columns: 1fr;
+  }
+
+  .data-tools {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .data-tool-actions,
+  .data-tool-actions button {
+    width: 100%;
   }
 
   .expense-analysis .section-title,
