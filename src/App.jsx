@@ -42,6 +42,12 @@ function App() {
   const [selectedMonth, setSelectedMonth] = useState(
     new Date().toISOString().slice(0, 7)
   )
+  const [monthlyBudgets, setMonthlyBudgets] = useState(() => {
+    const savedBudgets = localStorage.getItem('butceKocuMonthlyBudgets')
+    return savedBudgets ? JSON.parse(savedBudgets) : {}
+  })
+  const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false)
+  const [budgetInput, setBudgetInput] = useState('')
 
   const [form, setForm] = useState({
     amount: '',
@@ -56,6 +62,13 @@ function App() {
       JSON.stringify(transactions)
     )
   }, [transactions])
+
+  useEffect(() => {
+    localStorage.setItem(
+      'butceKocuMonthlyBudgets',
+      JSON.stringify(monthlyBudgets)
+    )
+  }, [monthlyBudgets])
 
   const monthlyTransactions = useMemo(() => {
     return transactions
@@ -93,6 +106,11 @@ function App() {
   }, [monthlyTransactions, totalExpense])
 
   const balance = totalIncome - totalExpense
+  const budgetLimit = monthlyBudgets[selectedMonth] || 0
+  const remainingBudget = budgetLimit - totalExpense
+  const budgetUsage = budgetLimit > 0
+    ? Math.min((totalExpense / budgetLimit) * 100, 100)
+    : 0
 
   const savingRate =
     totalIncome > 0
@@ -207,6 +225,24 @@ function App() {
     }).format(new Date(Number(year), Number(month) - 1, 1))
   }
 
+  function openBudgetModal() {
+    setBudgetInput(budgetLimit || '')
+    setIsBudgetModalOpen(true)
+  }
+
+  function handleBudgetSubmit(event) {
+    event.preventDefault()
+    const amount = Number(budgetInput)
+
+    if (!amount || amount <= 0) {
+      alert('Lütfen geçerli bir bütçe limiti gir.')
+      return
+    }
+
+    setMonthlyBudgets((prev) => ({ ...prev, [selectedMonth]: amount }))
+    setIsBudgetModalOpen(false)
+  }
+
   return (
     <div className="app">
       <header>
@@ -256,6 +292,43 @@ function App() {
             <span>◎ Tasarruf</span>
             <strong>%{savingRate}</strong>
           </div>
+        </section>
+
+        <section className={`budget-card ${remainingBudget < 0 ? 'budget-card-alert' : ''}`}>
+          <div className="budget-header">
+            <div>
+              <span>Aylık harcama bütçesi</span>
+              <h3>{budgetLimit ? formatMoney(budgetLimit) : 'Henüz belirlenmedi'}</h3>
+            </div>
+
+            <button onClick={openBudgetModal}>
+              {budgetLimit ? 'Limiti Güncelle' : 'Bütçe Belirle'}
+            </button>
+          </div>
+
+          {budgetLimit > 0 && (
+            <>
+              <div
+                className="budget-progress"
+                role="progressbar"
+                aria-label="Aylık bütçe kullanımı"
+                aria-valuenow={Math.round(budgetUsage)}
+                aria-valuemin="0"
+                aria-valuemax="100"
+              >
+                <div style={{ width: `${budgetUsage}%` }} />
+              </div>
+
+              <div className="budget-details">
+                <span>{formatMoney(totalExpense)} harcandı</span>
+                <strong>
+                  {remainingBudget >= 0
+                    ? `${formatMoney(remainingBudget)} kaldı`
+                    : `Limit ${formatMoney(Math.abs(remainingBudget))} aşıldı`}
+                </strong>
+              </div>
+            </>
+          )}
         </section>
 
         <section className="actions">
@@ -511,6 +584,54 @@ function App() {
                   className="primary-button"
                 >
                   {editingId ? 'Güncelle' : 'Kaydet'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isBudgetModalOpen && (
+        <div className="modal-backdrop">
+          <div className="modal budget-modal">
+            <div className="modal-header">
+              <div>
+                <p>{formatMonth(selectedMonth)}</p>
+                <h2>Aylık Bütçe Belirle</h2>
+              </div>
+
+              <button
+                className="close-button"
+                onClick={() => setIsBudgetModalOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleBudgetSubmit}>
+              <label>
+                Harcama limiti
+                <input
+                  type="number"
+                  value={budgetInput}
+                  onChange={(event) => setBudgetInput(event.target.value)}
+                  placeholder="Örn. 15000"
+                  min="1"
+                  step="0.01"
+                  autoFocus
+                />
+              </label>
+
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => setIsBudgetModalOpen(false)}
+                >
+                  Vazgeç
+                </button>
+                <button type="submit" className="primary-button">
+                  Kaydet
                 </button>
               </div>
             </form>

@@ -143,6 +143,77 @@ main {
   font-size: 23px;
 }
 
+.budget-card {
+  margin-top: 18px;
+  padding: 22px;
+  border: 1px solid #dfe6ef;
+  border-radius: 16px;
+  background: white;
+}
+
+.budget-card-alert {
+  border-color: #efb6b6;
+  background: #fffafa;
+}
+
+.budget-header,
+.budget-details {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.budget-header span {
+  color: #7a8496;
+  font-size: 13px;
+}
+
+.budget-header h3 {
+  margin: 5px 0 0;
+}
+
+.budget-header button {
+  border: 1px solid #dce3ec;
+  border-radius: 10px;
+  padding: 10px 13px;
+  background: white;
+  color: #27364d;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.budget-progress {
+  height: 10px;
+  margin: 20px 0 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #edf1f6;
+}
+
+.budget-progress div {
+  height: 100%;
+  border-radius: inherit;
+  background: #376e8f;
+}
+
+.budget-card-alert .budget-progress div {
+  background: #c63838;
+}
+
+.budget-details {
+  color: #68758a;
+  font-size: 13px;
+}
+
+.budget-details strong {
+  color: #27364d;
+}
+
+.budget-card-alert .budget-details strong {
+  color: #b52e2e;
+}
+
 .actions {
   display: flex;
   gap: 12px;
@@ -385,7 +456,18 @@ main {
   .actions button {
     width: 100%;
   }
-}.modal-backdrop {
+
+  .budget-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .budget-header button {
+    width: 100%;
+  }
+}
+
+.modal-backdrop {
   position: fixed;
   inset: 0;
   background: rgba(15, 23, 42, 0.55);
