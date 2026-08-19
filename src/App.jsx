@@ -7,6 +7,7 @@ import {
   getRecurringDate,
   isValidBackup,
 } from './utils/budget'
+import { parseTransactionCsv } from './utils/csv'
 import BudgetCard from './components/BudgetCard'
 import BudgetModal from './components/BudgetModal'
 import DataTools from './components/DataTools'
@@ -68,6 +69,7 @@ function App() {
   const [typeFilter, setTypeFilter] = useState('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const backupInputRef = useRef(null)
+  const csvInputRef = useRef(null)
   const [savingsGoals, setSavingsGoals] = useState(() => {
     const savedGoals = localStorage.getItem('butceKocuSavingsGoals')
     return savedGoals ? JSON.parse(savedGoals) : []
@@ -434,6 +436,43 @@ function App() {
     }
   }
 
+  async function importCsv(event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+
+    try {
+      const result = parseTransactionCsv(await file.text())
+      const existingKeys = new Set(
+        transactions.map((item) =>
+          `${item.date}|${item.type}|${Number(item.amount)}|${item.note || ''}`
+        )
+      )
+      const newTransactions = result.transactions.filter((item) => {
+        const key = `${item.date}|${item.type}|${Number(item.amount)}|${item.note || ''}`
+        return !existingKeys.has(key)
+      })
+      const duplicateCount = result.transactions.length - newTransactions.length
+
+      if (newTransactions.length === 0) {
+        alert('İçe aktarılabilecek yeni işlem bulunamadı.')
+        return
+      }
+
+      const confirmed = window.confirm(
+        `${newTransactions.length} yeni işlem bulundu. ` +
+        `${duplicateCount} mükerrer ve ${result.skipped} geçersiz satır atlandı. ` +
+        'İşlemler eklensin mi?'
+      )
+      if (!confirmed) return
+
+      setTransactions((prev) => [...newTransactions, ...prev])
+      alert(`${newTransactions.length} işlem başarıyla içe aktarıldı.`)
+    } catch (error) {
+      alert(error.message || 'CSV dosyası okunamadı.')
+    }
+  }
+
   return (
     <div className="app">
       <header>
@@ -548,6 +587,9 @@ function App() {
           onImportClick={() => backupInputRef.current?.click()}
           inputRef={backupInputRef}
           onImport={importBackup}
+          onCsvImportClick={() => csvInputRef.current?.click()}
+          csvInputRef={csvInputRef}
+          onCsvImport={importCsv}
         />
       </main>
 

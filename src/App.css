@@ -508,7 +508,7 @@ main {
   cursor: pointer;
 }
 
-.data-tool-actions button:nth-child(2) {
+.data-tool-actions button:first-child {
   border-color: #172033;
   background: #172033;
   color: white;
