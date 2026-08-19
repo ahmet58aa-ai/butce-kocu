@@ -1,6 +1,14 @@
  import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 
+function getRecurringDate(monthValue, originalDate) {
+  const [year, month] = monthValue.split('-').map(Number)
+  const originalDay = Number(originalDate.slice(8, 10))
+  const lastDay = new Date(year, month, 0).getDate()
+  const day = String(Math.min(originalDay, lastDay)).padStart(2, '0')
+  return `${monthValue}-${day}`
+}
+
 function App() {
   const [transactions, setTransactions] = useState(() => {
     const savedTransactions = localStorage.getItem('butceKocuTransactions')
@@ -58,6 +66,7 @@ function App() {
     category: '',
     date: new Date().toISOString().slice(0, 10),
     note: '',
+    recurring: false,
   })
 
   useEffect(() => {
@@ -151,6 +160,7 @@ function App() {
       category: type === 'income' ? 'Maaş' : 'Market',
       date: new Date().toISOString().slice(0, 10),
       note: '',
+      recurring: false,
     })
   }
 
@@ -189,6 +199,7 @@ function App() {
                 category: form.category,
                 date: form.date,
                 note: form.note,
+                recurring: form.recurring,
               }
             : item
         )
@@ -201,6 +212,7 @@ function App() {
         category: form.category,
         date: form.date,
         note: form.note,
+        recurring: form.recurring,
       }
 
       setTransactions((prev) => [newTransaction, ...prev])
@@ -218,6 +230,7 @@ function App() {
       category: transaction.category,
       date: transaction.date,
       note: transaction.note || '',
+      recurring: Boolean(transaction.recurring),
     })
   }
 
@@ -248,6 +261,37 @@ function App() {
       month: 'long',
       year: 'numeric',
     }).format(new Date(Number(year), Number(month) - 1, 1))
+  }
+
+  function handleMonthChange(event) {
+    const nextMonth = event.target.value
+
+    setTransactions((prev) => {
+      const recurringTemplates = prev.filter(
+        (item) => item.recurring && !item.recurrenceId
+      )
+      const missingTransactions = recurringTemplates
+        .filter((template) => template.date.slice(0, 7) < nextMonth)
+        .filter((template) =>
+          !prev.some(
+            (item) =>
+              item.recurrenceId === template.id &&
+              item.date.startsWith(nextMonth)
+          )
+        )
+        .map((template) => ({
+          ...template,
+          id: `${template.id}-${nextMonth}`,
+          date: getRecurringDate(nextMonth, template.date),
+          recurring: false,
+          recurrenceId: template.id,
+        }))
+
+      return missingTransactions.length > 0
+        ? [...missingTransactions, ...prev]
+        : prev
+    })
+    setSelectedMonth(nextMonth)
   }
 
   function openBudgetModal() {
@@ -382,7 +426,7 @@ function App() {
             <input
               type="month"
               value={selectedMonth}
-              onChange={(event) => setSelectedMonth(event.target.value)}
+              onChange={handleMonthChange}
             />
           </label>
         </section>
@@ -597,6 +641,9 @@ function App() {
                   {transaction.note
                     ? ` • ${transaction.note}`
                     : ''}
+                  {(transaction.recurring || transaction.recurrenceId) && (
+                    <span className="recurring-badge">Her ay</span>
+                  )}
                 </p>
               </div>
 
@@ -755,6 +802,26 @@ function App() {
                   rows="3"
                 />
               </label>
+
+              {!editingId?.toString().includes('-') && (
+                <label className="recurring-option">
+                  <input
+                    type="checkbox"
+                    name="recurring"
+                    checked={form.recurring}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        recurring: event.target.checked,
+                      }))
+                    }
+                  />
+                  <span>
+                    <strong>Her ay tekrarla</strong>
+                    <small>Maaş, kira veya abonelik gibi düzenli işlemler için.</small>
+                  </span>
+                </label>
+              )}
 
               <div className="modal-actions">
                 <button
