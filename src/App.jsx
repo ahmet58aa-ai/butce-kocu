@@ -7,6 +7,15 @@ import {
   getRecurringDate,
   isValidBackup,
 } from './utils/budget'
+import BudgetCard from './components/BudgetCard'
+import BudgetModal from './components/BudgetModal'
+import DataTools from './components/DataTools'
+import ExpenseAnalysis from './components/ExpenseAnalysis'
+import GoalModal from './components/GoalModal'
+import SavingsGoals from './components/SavingsGoals'
+import SummaryCards from './components/SummaryCards'
+import TransactionList from './components/TransactionList'
+import TransactionModal from './components/TransactionModal'
 
 function App() {
   const [transactions, setTransactions] = useState(() => {
@@ -459,59 +468,21 @@ function App() {
           <span>{formatMonth(selectedMonth)}</span>
         </section>
 
-        <section className="summary">
-          <div className="card">
-            <span>↑ Gelir</span>
-            <strong>{formatMoney(totalIncome)}</strong>
-          </div>
+        <SummaryCards
+          totalIncome={totalIncome}
+          totalExpense={totalExpense}
+          savingRate={savingRate}
+          formatMoney={formatMoney}
+        />
 
-          <div className="card">
-            <span>↓ Harcama</span>
-            <strong>{formatMoney(totalExpense)}</strong>
-          </div>
-
-          <div className="card">
-            <span>◎ Tasarruf</span>
-            <strong>%{savingRate}</strong>
-          </div>
-        </section>
-
-        <section className={`budget-card ${remainingBudget < 0 ? 'budget-card-alert' : ''}`}>
-          <div className="budget-header">
-            <div>
-              <span>Aylık harcama bütçesi</span>
-              <h3>{budgetLimit ? formatMoney(budgetLimit) : 'Henüz belirlenmedi'}</h3>
-            </div>
-
-            <button onClick={openBudgetModal}>
-              {budgetLimit ? 'Limiti Güncelle' : 'Bütçe Belirle'}
-            </button>
-          </div>
-
-          {budgetLimit > 0 && (
-            <>
-              <div
-                className="budget-progress"
-                role="progressbar"
-                aria-label="Aylık bütçe kullanımı"
-                aria-valuenow={Math.round(budgetUsage)}
-                aria-valuemin="0"
-                aria-valuemax="100"
-              >
-                <div style={{ width: `${budgetUsage}%` }} />
-              </div>
-
-              <div className="budget-details">
-                <span>{formatMoney(totalExpense)} harcandı</span>
-                <strong>
-                  {remainingBudget >= 0
-                    ? `${formatMoney(remainingBudget)} kaldı`
-                    : `Limit ${formatMoney(Math.abs(remainingBudget))} aşıldı`}
-                </strong>
-              </div>
-            </>
-          )}
-        </section>
+        <BudgetCard
+          budgetLimit={budgetLimit}
+          budgetUsage={budgetUsage}
+          remainingBudget={remainingBudget}
+          totalExpense={totalExpense}
+          formatMoney={formatMoney}
+          onOpen={openBudgetModal}
+        />
 
         <section className="actions">
           <button onClick={() => openModal('income')}>
@@ -541,529 +512,76 @@ function App() {
           </p>
         </section>
 
-        <section className="expense-analysis">
-          <div className="section-title">
-            <div>
-              <p className="section-eyebrow">Aylık analiz</p>
-              <h3>Harcama dağılımı</h3>
-            </div>
+        <ExpenseAnalysis
+          expenseBreakdown={expenseBreakdown}
+          totalExpense={totalExpense}
+          formatMoney={formatMoney}
+        />
 
-            <strong>{formatMoney(totalExpense)}</strong>
-          </div>
+        <SavingsGoals
+          goals={savingsGoals}
+          formatMoney={formatMoney}
+          onAdd={() => openGoalModal()}
+          onEdit={openGoalModal}
+          onDelete={deleteGoal}
+        />
 
-          {expenseBreakdown.length > 0 ? (
-            <>
-              <div className="category-chart">
-                {expenseBreakdown.map((item, index) => (
-                  <div className="category-row" key={item.category}>
-                    <div className="category-meta">
-                      <span>{item.category}</span>
-                      <span>
-                        %{item.percentage.toFixed(0)} · {formatMoney(item.amount)}
-                      </span>
-                    </div>
+        <TransactionList
+          transactions={filteredTransactions}
+          monthlyTransactionCount={monthlyTransactions.length}
+          availableCategories={availableCategories}
+          searchTerm={searchTerm}
+          typeFilter={typeFilter}
+          categoryFilter={categoryFilter}
+          selectedMonthLabel={formatMonth(selectedMonth)}
+          formatMoney={formatMoney}
+          onSearchChange={setSearchTerm}
+          onTypeChange={setTypeFilter}
+          onCategoryChange={setCategoryFilter}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
 
-                    <div
-                      className="category-track"
-                      role="progressbar"
-                      aria-label={`${item.category} harcaması`}
-                      aria-valuenow={Math.round(item.percentage)}
-                      aria-valuemin="0"
-                      aria-valuemax="100"
-                    >
-                      <div
-                        className={`category-bar category-bar-${(index % 5) + 1}`}
-                        style={{ width: `${item.percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <p className="analysis-note">
-                En yüksek harcaman <strong>{expenseBreakdown[0].category}</strong>
-                {' '}kategorisinde: {formatMoney(expenseBreakdown[0].amount)}.
-              </p>
-            </>
-          ) : (
-            <div className="analysis-empty">
-              Bu ay gider eklediğinde kategori dağılımını burada göreceksin.
-            </div>
-          )}
-        </section>
-
-        <section className="goals-section">
-          <div className="section-title">
-            <div>
-              <p className="section-eyebrow">Gelecek planı</p>
-              <h3>Tasarruf hedefleri</h3>
-            </div>
-            <button className="add-goal-button" onClick={() => openGoalModal()}>
-              + Hedef Ekle
-            </button>
-          </div>
-
-          {savingsGoals.length > 0 ? (
-            <div className="goals-grid">
-              {savingsGoals.map((goal) => {
-                const progress = Math.min(
-                  (goal.currentAmount / goal.targetAmount) * 100,
-                  100
-                )
-
-                return (
-                  <article className="goal-card" key={goal.id}>
-                    <div className="goal-card-header">
-                      <div>
-                        <h4>{goal.name}</h4>
-                        <span>
-                          {goal.targetDate ? `Hedef: ${goal.targetDate}` : 'Tarih belirtilmedi'}
-                        </span>
-                      </div>
-                      <strong>%{progress.toFixed(0)}</strong>
-                    </div>
-
-                    <div
-                      className="goal-progress"
-                      role="progressbar"
-                      aria-label={`${goal.name} hedef ilerlemesi`}
-                      aria-valuenow={Math.round(progress)}
-                      aria-valuemin="0"
-                      aria-valuemax="100"
-                    >
-                      <div style={{ width: `${progress}%` }} />
-                    </div>
-
-                    <div className="goal-amounts">
-                      <span>{formatMoney(goal.currentAmount)} birikti</span>
-                      <span>{formatMoney(goal.targetAmount)} hedef</span>
-                    </div>
-
-                    <div className="goal-actions">
-                      <button onClick={() => openGoalModal(goal)}>Güncelle</button>
-                      <button onClick={() => deleteGoal(goal.id)}>Sil</button>
-                    </div>
-                  </article>
-                )
-              })}
-            </div>
-          ) : (
-            <div className="goals-empty">
-              <span>🎯</span>
-              <div>
-                <strong>İlk tasarruf hedefini oluştur</strong>
-                <p>Tatil, acil durum fonu veya büyük bir alışveriş için birikimini takip et.</p>
-              </div>
-            </div>
-          )}
-        </section>
-
-        <section className="transactions">
-          <div className="section-title">
-            <div>
-              <p className="section-eyebrow">{filteredTransactions.length} sonuç</p>
-              <h3>İşlemler</h3>
-            </div>
-          </div>
-
-          <div className="transaction-filters">
-            <label className="search-field">
-              <span className="sr-only">İşlemlerde ara</span>
-              <input
-                type="search"
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder="Kategori veya açıklama ara"
-              />
-            </label>
-
-            <label>
-              <span className="sr-only">İşlem türü</span>
-              <select
-                value={typeFilter}
-                onChange={(event) => setTypeFilter(event.target.value)}
-              >
-                <option value="all">Tüm türler</option>
-                <option value="income">Gelirler</option>
-                <option value="expense">Giderler</option>
-              </select>
-            </label>
-
-            <label>
-              <span className="sr-only">Kategori</span>
-              <select
-                value={categoryFilter}
-                onChange={(event) => setCategoryFilter(event.target.value)}
-              >
-                <option value="all">Tüm kategoriler</option>
-                {availableCategories.map((category) => (
-                  <option key={category} value={category}>{category}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          {filteredTransactions.length === 0 && (
-            <div className="empty-state">
-              <span>🔎</span>
-              <strong>
-                {monthlyTransactions.length === 0
-                  ? `${formatMonth(selectedMonth)} için işlem yok`
-                  : 'Filtrelere uygun işlem bulunamadı'}
-              </strong>
-              <p>
-                {monthlyTransactions.length === 0
-                  ? 'Bu aya ait ilk gelir veya harcamanı ekleyebilirsin.'
-                  : 'Arama metnini veya filtreleri değiştirmeyi dene.'}
-              </p>
-            </div>
-          )}
-
-          {filteredTransactions.map((transaction) => (
-            <div className="transaction" key={transaction.id}>
-              <div>
-                <strong>{transaction.category}</strong>
-
-                <p>
-                  {transaction.date}
-                  {transaction.note
-                    ? ` • ${transaction.note}`
-                    : ''}
-                  {(transaction.recurring || transaction.recurrenceId) && (
-                    <span className="recurring-badge">Her ay</span>
-                  )}
-                </p>
-              </div>
-
-              <div className="transaction-right">
-                <span
-                  className={
-                    transaction.type === 'income'
-                      ? 'amount income'
-                      : 'amount expense'
-                  }
-                >
-                  {transaction.type === 'income' ? '+' : '-'}
-                  {formatMoney(transaction.amount)}
-                </span>
-
-                <div className="transaction-actions">
-                  <button
-                    onClick={() => handleEdit(transaction)}
-                    className="edit-button"
-                  >
-                    Düzenle
-                  </button>
-
-                  <button
-                    onClick={() => handleDelete(transaction.id)}
-                    className="delete-button"
-                  >
-                    Sil
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </section>
-
-        <section className="data-tools">
-          <div>
-            <p className="section-eyebrow">Veri yönetimi</p>
-            <h3>Verilerini güvende tut</h3>
-            <p>İşlemlerini tabloya aktarabilir veya tam bir yedek oluşturabilirsin.</p>
-          </div>
-
-          <div className="data-tool-actions">
-            <button onClick={exportCsv}>CSV İndir</button>
-            <button onClick={exportBackup}>Yedek Al</button>
-            <button onClick={() => backupInputRef.current?.click()}>
-              Yedeği Geri Yükle
-            </button>
-            <input
-              ref={backupInputRef}
-              className="backup-input"
-              type="file"
-              accept="application/json,.json"
-              onChange={importBackup}
-            />
-          </div>
-        </section>
+        <DataTools
+          onExportCsv={exportCsv}
+          onExportBackup={exportBackup}
+          onImportClick={() => backupInputRef.current?.click()}
+          inputRef={backupInputRef}
+          onImport={importBackup}
+        />
       </main>
 
-      {modalType && (
-        <div className="modal-backdrop">
-          <div className="modal">
-            <div className="modal-header">
-              <div>
-                <p>
-                  {editingId
-                    ? 'İşlemi düzenle'
-                    : modalType === 'income'
-                    ? 'Yeni gelir'
-                    : 'Yeni harcama'}
-                </p>
+      <TransactionModal
+        type={modalType}
+        editingId={editingId}
+        form={form}
+        onChange={handleChange}
+        onRecurringChange={(recurring) =>
+          setForm((prev) => ({ ...prev, recurring }))
+        }
+        onClose={closeModal}
+        onSubmit={handleSubmit}
+      />
 
-                <h2>
-                  {editingId
-                    ? 'İşlemi Düzenle'
-                    : modalType === 'income'
-                    ? 'Gelir Ekle'
-                    : 'Harcama Ekle'}
-                </h2>
-              </div>
+      <BudgetModal
+        isOpen={isBudgetModalOpen}
+        monthLabel={formatMonth(selectedMonth)}
+        value={budgetInput}
+        onChange={setBudgetInput}
+        onClose={() => setIsBudgetModalOpen(false)}
+        onSubmit={handleBudgetSubmit}
+      />
 
-              <button
-                className="close-button"
-                onClick={closeModal}
-              >
-                ×
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit}>
-              <label>
-                Tutar
-                <input
-                  type="number"
-                  name="amount"
-                  value={form.amount}
-                  onChange={handleChange}
-                  placeholder="Örn. 2500"
-                  min="0"
-                  step="0.01"
-                  autoFocus
-                />
-              </label>
-
-              <label>
-                Kategori
-
-                {modalType === 'income' ? (
-                  <select
-                    name="category"
-                    value={form.category}
-                    onChange={handleChange}
-                  >
-                    <option>Maaş</option>
-                    <option>Ek Gelir</option>
-                    <option>Prim</option>
-                    <option>Yatırım Geliri</option>
-                    <option>Diğer</option>
-                  </select>
-                ) : (
-                  <select
-                    name="category"
-                    value={form.category}
-                    onChange={handleChange}
-                  >
-                    <option>Market</option>
-                    <option>Yemek</option>
-                    <option>Ulaşım</option>
-                    <option>Faturalar</option>
-                    <option>Kira</option>
-                    <option>Sağlık</option>
-                    <option>Eğlence</option>
-                    <option>Alışveriş</option>
-                    <option>Diğer</option>
-                  </select>
-                )}
-              </label>
-
-              <label>
-                Tarih
-                <input
-                  type="date"
-                  name="date"
-                  value={form.date}
-                  onChange={handleChange}
-                />
-              </label>
-
-              <label>
-                Açıklama
-                <textarea
-                  name="note"
-                  value={form.note}
-                  onChange={handleChange}
-                  placeholder="İstersen kısa bir not ekle"
-                  rows="3"
-                />
-              </label>
-
-              {!editingId?.toString().includes('-') && (
-                <label className="recurring-option">
-                  <input
-                    type="checkbox"
-                    name="recurring"
-                    checked={form.recurring}
-                    onChange={(event) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        recurring: event.target.checked,
-                      }))
-                    }
-                  />
-                  <span>
-                    <strong>Her ay tekrarla</strong>
-                    <small>Maaş, kira veya abonelik gibi düzenli işlemler için.</small>
-                  </span>
-                </label>
-              )}
-
-              <div className="modal-actions">
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={closeModal}
-                >
-                  Vazgeç
-                </button>
-
-                <button
-                  type="submit"
-                  className="primary-button"
-                >
-                  {editingId ? 'Güncelle' : 'Kaydet'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {isBudgetModalOpen && (
-        <div className="modal-backdrop">
-          <div className="modal budget-modal">
-            <div className="modal-header">
-              <div>
-                <p>{formatMonth(selectedMonth)}</p>
-                <h2>Aylık Bütçe Belirle</h2>
-              </div>
-
-              <button
-                className="close-button"
-                onClick={() => setIsBudgetModalOpen(false)}
-              >
-                ×
-              </button>
-            </div>
-
-            <form onSubmit={handleBudgetSubmit}>
-              <label>
-                Harcama limiti
-                <input
-                  type="number"
-                  value={budgetInput}
-                  onChange={(event) => setBudgetInput(event.target.value)}
-                  placeholder="Örn. 15000"
-                  min="1"
-                  step="0.01"
-                  autoFocus
-                />
-              </label>
-
-              <div className="modal-actions">
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={() => setIsBudgetModalOpen(false)}
-                >
-                  Vazgeç
-                </button>
-                <button type="submit" className="primary-button">
-                  Kaydet
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {isGoalModalOpen && (
-        <div className="modal-backdrop">
-          <div className="modal">
-            <div className="modal-header">
-              <div>
-                <p>Tasarruf planı</p>
-                <h2>{editingGoalId ? 'Hedefi Güncelle' : 'Yeni Hedef'}</h2>
-              </div>
-              <button
-                className="close-button"
-                onClick={() => setIsGoalModalOpen(false)}
-              >
-                ×
-              </button>
-            </div>
-
-            <form onSubmit={handleGoalSubmit}>
-              <label>
-                Hedef adı
-                <input
-                  value={goalForm.name}
-                  onChange={(event) =>
-                    setGoalForm((prev) => ({ ...prev, name: event.target.value }))
-                  }
-                  placeholder="Örn. Acil durum fonu"
-                  autoFocus
-                />
-              </label>
-
-              <label>
-                Hedef tutarı
-                <input
-                  type="number"
-                  value={goalForm.targetAmount}
-                  onChange={(event) =>
-                    setGoalForm((prev) => ({ ...prev, targetAmount: event.target.value }))
-                  }
-                  placeholder="Örn. 50000"
-                  min="1"
-                  step="0.01"
-                />
-              </label>
-
-              <label>
-                Şu an biriken
-                <input
-                  type="number"
-                  value={goalForm.currentAmount}
-                  onChange={(event) =>
-                    setGoalForm((prev) => ({ ...prev, currentAmount: event.target.value }))
-                  }
-                  placeholder="Örn. 10000"
-                  min="0"
-                  step="0.01"
-                />
-              </label>
-
-              <label>
-                Hedef tarihi
-                <input
-                  type="date"
-                  value={goalForm.targetDate}
-                  onChange={(event) =>
-                    setGoalForm((prev) => ({ ...prev, targetDate: event.target.value }))
-                  }
-                />
-              </label>
-
-              <div className="modal-actions">
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={() => setIsGoalModalOpen(false)}
-                >
-                  Vazgeç
-                </button>
-                <button type="submit" className="primary-button">
-                  {editingGoalId ? 'Güncelle' : 'Hedef Oluştur'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <GoalModal
+        isOpen={isGoalModalOpen}
+        editing={Boolean(editingGoalId)}
+        form={goalForm}
+        onFieldChange={(field, value) =>
+          setGoalForm((prev) => ({ ...prev, [field]: value }))
+        }
+        onClose={() => setIsGoalModalOpen(false)}
+        onSubmit={handleGoalSubmit}
+      />
     </div>
   )
 }
