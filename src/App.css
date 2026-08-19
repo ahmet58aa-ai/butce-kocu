@@ -61,9 +61,36 @@ main {
   color: #7a8496;
 }
 
+.welcome {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
 .welcome h2 {
   margin: 5px 0 25px;
   font-size: 30px;
+}
+
+.month-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 25px;
+  color: #7a8496;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.month-filter input {
+  border: 1px solid #dce3ec;
+  border-radius: 10px;
+  background: white;
+  color: #172033;
+  padding: 10px 12px;
+  font: inherit;
+  cursor: pointer;
 }
 
 .balance-card {
@@ -202,6 +229,29 @@ main {
   border-bottom: 0;
 }
 
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 36px 16px 24px;
+  text-align: center;
+  color: #7a8496;
+}
+
+.empty-state span {
+  font-size: 32px;
+  margin-bottom: 10px;
+}
+
+.empty-state strong {
+  color: #27364d;
+}
+
+.empty-state p {
+  margin: 6px 0 0;
+  font-size: 14px;
+}
+
 .transaction p {
   margin: 4px 0 0;
   color: #8a93a3;
@@ -220,6 +270,16 @@ main {
   main {
     width: 92%;
     margin-top: 25px;
+  }
+
+  .welcome {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .month-filter {
+    margin-top: -10px;
   }
 
   .summary {

@@ -39,6 +39,9 @@ function App() {
 
   const [modalType, setModalType] = useState(null)
   const [editingId, setEditingId] = useState(null)
+  const [selectedMonth, setSelectedMonth] = useState(
+    new Date().toISOString().slice(0, 7)
+  )
 
   const [form, setForm] = useState({
     amount: '',
@@ -54,17 +57,23 @@ function App() {
     )
   }, [transactions])
 
-  const totalIncome = useMemo(() => {
+  const monthlyTransactions = useMemo(() => {
     return transactions
+      .filter((item) => item.date.startsWith(selectedMonth))
+      .sort((a, b) => b.date.localeCompare(a.date))
+  }, [transactions, selectedMonth])
+
+  const totalIncome = useMemo(() => {
+    return monthlyTransactions
       .filter((item) => item.type === 'income')
       .reduce((sum, item) => sum + item.amount, 0)
-  }, [transactions])
+  }, [monthlyTransactions])
 
   const totalExpense = useMemo(() => {
-    return transactions
+    return monthlyTransactions
       .filter((item) => item.type === 'expense')
       .reduce((sum, item) => sum + item.amount, 0)
-  }, [transactions])
+  }, [monthlyTransactions])
 
   const balance = totalIncome - totalExpense
 
@@ -172,6 +181,15 @@ function App() {
     }).format(value)
   }
 
+  function formatMonth(value) {
+    const [year, month] = value.split('-')
+
+    return new Intl.DateTimeFormat('tr-TR', {
+      month: 'long',
+      year: 'numeric',
+    }).format(new Date(Number(year), Number(month) - 1, 1))
+  }
+
   return (
     <div className="app">
       <header>
@@ -185,14 +203,25 @@ function App() {
 
       <main>
         <section className="welcome">
-          <p>Merhaba 👋</p>
-          <h2>Finansal durumun</h2>
+          <div>
+            <p>Merhaba 👋</p>
+            <h2>Finansal durumun</h2>
+          </div>
+
+          <label className="month-filter">
+            <span>Görüntülenen ay</span>
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(event) => setSelectedMonth(event.target.value)}
+            />
+          </label>
         </section>
 
         <section className="balance-card">
           <p>Kullanılabilir Bakiye</p>
           <h2>{formatMoney(balance)}</h2>
-          <span>Bu ay</span>
+          <span>{formatMonth(selectedMonth)}</span>
         </section>
 
         <section className="summary">
@@ -226,14 +255,17 @@ function App() {
           <span>💡 BütçeKoçu</span>
 
           <h3>
-            {balance >= 0
+            {monthlyTransactions.length === 0
+              ? 'Bu ay için henüz işlem bulunmuyor.'
+              : balance >= 0
               ? 'Bu ay bütçen kontrol altında.'
               : 'Bu ay giderlerin gelirini aşmış durumda.'}
           </h3>
 
           <p>
-            Toplam gelirinin %{savingRate} kadarı şu anda elinde kalıyor.
-            Harcamalarını düzenli takip ederek tasarruf oranını artırabilirsin.
+            {monthlyTransactions.length === 0
+              ? 'Gelir veya harcama ekleyerek aylık durumunu takip etmeye başlayabilirsin.'
+              : `Toplam gelirinin %${savingRate} kadarı şu anda elinde kalıyor. Harcamalarını düzenli takip ederek tasarruf oranını artırabilirsin.`}
           </p>
         </section>
 
@@ -243,7 +275,15 @@ function App() {
             <button>Tümünü Gör</button>
           </div>
 
-          {transactions.map((transaction) => (
+          {monthlyTransactions.length === 0 && (
+            <div className="empty-state">
+              <span>📅</span>
+              <strong>{formatMonth(selectedMonth)} için işlem yok</strong>
+              <p>Bu aya ait ilk gelir veya harcamanı ekleyebilirsin.</p>
+            </div>
+          )}
+
+          {monthlyTransactions.map((transaction) => (
             <div className="transaction" key={transaction.id}>
               <div>
                 <strong>{transaction.category}</strong>
