@@ -60,6 +60,18 @@ function App() {
   const [typeFilter, setTypeFilter] = useState('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const backupInputRef = useRef(null)
+  const [savingsGoals, setSavingsGoals] = useState(() => {
+    const savedGoals = localStorage.getItem('butceKocuSavingsGoals')
+    return savedGoals ? JSON.parse(savedGoals) : []
+  })
+  const [isGoalModalOpen, setIsGoalModalOpen] = useState(false)
+  const [editingGoalId, setEditingGoalId] = useState(null)
+  const [goalForm, setGoalForm] = useState({
+    name: '',
+    targetAmount: '',
+    currentAmount: '',
+    targetDate: '',
+  })
 
   const [form, setForm] = useState({
     amount: '',
@@ -82,6 +94,13 @@ function App() {
       JSON.stringify(monthlyBudgets)
     )
   }, [monthlyBudgets])
+
+  useEffect(() => {
+    localStorage.setItem(
+      'butceKocuSavingsGoals',
+      JSON.stringify(savingsGoals)
+    )
+  }, [savingsGoals])
 
   const monthlyTransactions = useMemo(() => {
     return transactions
@@ -312,6 +331,48 @@ function App() {
     setIsBudgetModalOpen(false)
   }
 
+  function openGoalModal(goal = null) {
+    setEditingGoalId(goal?.id || null)
+    setGoalForm({
+      name: goal?.name || '',
+      targetAmount: goal?.targetAmount || '',
+      currentAmount: goal?.currentAmount || '',
+      targetDate: goal?.targetDate || '',
+    })
+    setIsGoalModalOpen(true)
+  }
+
+  function handleGoalSubmit(event) {
+    event.preventDefault()
+    const targetAmount = Number(goalForm.targetAmount)
+    const currentAmount = Number(goalForm.currentAmount || 0)
+
+    if (!goalForm.name.trim() || targetAmount <= 0 || currentAmount < 0) {
+      alert('Lütfen hedef bilgilerini doğru şekilde doldur.')
+      return
+    }
+
+    const goal = {
+      id: editingGoalId || Date.now(),
+      name: goalForm.name.trim(),
+      targetAmount,
+      currentAmount,
+      targetDate: goalForm.targetDate,
+    }
+
+    setSavingsGoals((prev) =>
+      editingGoalId
+        ? prev.map((item) => item.id === editingGoalId ? goal : item)
+        : [goal, ...prev]
+    )
+    setIsGoalModalOpen(false)
+  }
+
+  function deleteGoal(id) {
+    if (!window.confirm('Bu tasarruf hedefi silinsin mi?')) return
+    setSavingsGoals((prev) => prev.filter((goal) => goal.id !== id))
+  }
+
   function downloadFile(content, fileName, type) {
     const blob = new Blob([content], { type })
     const url = URL.createObjectURL(blob)
@@ -353,6 +414,7 @@ function App() {
       exportedAt: new Date().toISOString(),
       transactions,
       monthlyBudgets,
+      savingsGoals,
     }
 
     downloadFile(
@@ -382,8 +444,11 @@ function App() {
         backup.monthlyBudgets &&
         typeof backup.monthlyBudgets === 'object' &&
         !Array.isArray(backup.monthlyBudgets)
+      const hasValidGoals =
+        backup.savingsGoals === undefined ||
+        Array.isArray(backup.savingsGoals)
 
-      if (!hasValidTransactions || !hasValidBudgets) {
+      if (!hasValidTransactions || !hasValidBudgets || !hasValidGoals) {
         throw new Error('Geçersiz yedek biçimi')
       }
 
@@ -397,6 +462,7 @@ function App() {
         amount: Number(item.amount),
       })))
       setMonthlyBudgets(backup.monthlyBudgets)
+      setSavingsGoals(backup.savingsGoals || [])
       alert('Yedek başarıyla geri yüklendi.')
     } catch {
       alert('Bu dosya geçerli bir BütçeKoçu yedeği değil.')
@@ -566,6 +632,72 @@ function App() {
           ) : (
             <div className="analysis-empty">
               Bu ay gider eklediğinde kategori dağılımını burada göreceksin.
+            </div>
+          )}
+        </section>
+
+        <section className="goals-section">
+          <div className="section-title">
+            <div>
+              <p className="section-eyebrow">Gelecek planı</p>
+              <h3>Tasarruf hedefleri</h3>
+            </div>
+            <button className="add-goal-button" onClick={() => openGoalModal()}>
+              + Hedef Ekle
+            </button>
+          </div>
+
+          {savingsGoals.length > 0 ? (
+            <div className="goals-grid">
+              {savingsGoals.map((goal) => {
+                const progress = Math.min(
+                  (goal.currentAmount / goal.targetAmount) * 100,
+                  100
+                )
+
+                return (
+                  <article className="goal-card" key={goal.id}>
+                    <div className="goal-card-header">
+                      <div>
+                        <h4>{goal.name}</h4>
+                        <span>
+                          {goal.targetDate ? `Hedef: ${goal.targetDate}` : 'Tarih belirtilmedi'}
+                        </span>
+                      </div>
+                      <strong>%{progress.toFixed(0)}</strong>
+                    </div>
+
+                    <div
+                      className="goal-progress"
+                      role="progressbar"
+                      aria-label={`${goal.name} hedef ilerlemesi`}
+                      aria-valuenow={Math.round(progress)}
+                      aria-valuemin="0"
+                      aria-valuemax="100"
+                    >
+                      <div style={{ width: `${progress}%` }} />
+                    </div>
+
+                    <div className="goal-amounts">
+                      <span>{formatMoney(goal.currentAmount)} birikti</span>
+                      <span>{formatMoney(goal.targetAmount)} hedef</span>
+                    </div>
+
+                    <div className="goal-actions">
+                      <button onClick={() => openGoalModal(goal)}>Güncelle</button>
+                      <button onClick={() => deleteGoal(goal.id)}>Sil</button>
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="goals-empty">
+              <span>🎯</span>
+              <div>
+                <strong>İlk tasarruf hedefini oluştur</strong>
+                <p>Tatil, acil durum fonu veya büyük bir alışveriş için birikimini takip et.</p>
+              </div>
             </div>
           )}
         </section>
@@ -885,6 +1017,91 @@ function App() {
                 </button>
                 <button type="submit" className="primary-button">
                   Kaydet
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isGoalModalOpen && (
+        <div className="modal-backdrop">
+          <div className="modal">
+            <div className="modal-header">
+              <div>
+                <p>Tasarruf planı</p>
+                <h2>{editingGoalId ? 'Hedefi Güncelle' : 'Yeni Hedef'}</h2>
+              </div>
+              <button
+                className="close-button"
+                onClick={() => setIsGoalModalOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleGoalSubmit}>
+              <label>
+                Hedef adı
+                <input
+                  value={goalForm.name}
+                  onChange={(event) =>
+                    setGoalForm((prev) => ({ ...prev, name: event.target.value }))
+                  }
+                  placeholder="Örn. Acil durum fonu"
+                  autoFocus
+                />
+              </label>
+
+              <label>
+                Hedef tutarı
+                <input
+                  type="number"
+                  value={goalForm.targetAmount}
+                  onChange={(event) =>
+                    setGoalForm((prev) => ({ ...prev, targetAmount: event.target.value }))
+                  }
+                  placeholder="Örn. 50000"
+                  min="1"
+                  step="0.01"
+                />
+              </label>
+
+              <label>
+                Şu an biriken
+                <input
+                  type="number"
+                  value={goalForm.currentAmount}
+                  onChange={(event) =>
+                    setGoalForm((prev) => ({ ...prev, currentAmount: event.target.value }))
+                  }
+                  placeholder="Örn. 10000"
+                  min="0"
+                  step="0.01"
+                />
+              </label>
+
+              <label>
+                Hedef tarihi
+                <input
+                  type="date"
+                  value={goalForm.targetDate}
+                  onChange={(event) =>
+                    setGoalForm((prev) => ({ ...prev, targetDate: event.target.value }))
+                  }
+                />
+              </label>
+
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => setIsGoalModalOpen(false)}
+                >
+                  Vazgeç
+                </button>
+                <button type="submit" className="primary-button">
+                  {editingGoalId ? 'Güncelle' : 'Hedef Oluştur'}
                 </button>
               </div>
             </form>
