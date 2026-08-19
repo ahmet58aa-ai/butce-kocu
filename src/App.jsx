@@ -1,13 +1,12 @@
  import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
-
-function getRecurringDate(monthValue, originalDate) {
-  const [year, month] = monthValue.split('-').map(Number)
-  const originalDay = Number(originalDate.slice(8, 10))
-  const lastDay = new Date(year, month, 0).getDate()
-  const day = String(Math.min(originalDay, lastDay)).padStart(2, '0')
-  return `${monthValue}-${day}`
-}
+import {
+  calculateTotals,
+  createExpenseBreakdown,
+  filterTransactions,
+  getRecurringDate,
+  isValidBackup,
+} from './utils/budget'
 
 function App() {
   const [transactions, setTransactions] = useState(() => {
@@ -108,55 +107,29 @@ function App() {
       .sort((a, b) => b.date.localeCompare(a.date))
   }, [transactions, selectedMonth])
 
-  const totalIncome = useMemo(() => {
-    return monthlyTransactions
-      .filter((item) => item.type === 'income')
-      .reduce((sum, item) => sum + item.amount, 0)
-  }, [monthlyTransactions])
+  const { totalIncome, totalExpense } = useMemo(
+    () => calculateTotals(monthlyTransactions),
+    [monthlyTransactions]
+  )
 
-  const totalExpense = useMemo(() => {
-    return monthlyTransactions
-      .filter((item) => item.type === 'expense')
-      .reduce((sum, item) => sum + item.amount, 0)
-  }, [monthlyTransactions])
-
-  const expenseBreakdown = useMemo(() => {
-    const categoryTotals = monthlyTransactions
-      .filter((item) => item.type === 'expense')
-      .reduce((totals, item) => {
-        totals[item.category] = (totals[item.category] || 0) + item.amount
-        return totals
-      }, {})
-
-    return Object.entries(categoryTotals)
-      .map(([category, amount]) => ({
-        category,
-        amount,
-        percentage: totalExpense > 0 ? (amount / totalExpense) * 100 : 0,
-      }))
-      .sort((a, b) => b.amount - a.amount)
-  }, [monthlyTransactions, totalExpense])
+  const expenseBreakdown = useMemo(
+    () => createExpenseBreakdown(monthlyTransactions),
+    [monthlyTransactions]
+  )
 
   const availableCategories = useMemo(() => {
     return [...new Set(monthlyTransactions.map((item) => item.category))]
       .sort((a, b) => a.localeCompare(b, 'tr'))
   }, [monthlyTransactions])
 
-  const filteredTransactions = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLocaleLowerCase('tr-TR')
-
-    return monthlyTransactions.filter((item) => {
-      const matchesType = typeFilter === 'all' || item.type === typeFilter
-      const matchesCategory =
-        categoryFilter === 'all' || item.category === categoryFilter
-      const searchableText = `${item.category} ${item.note || ''}`
-        .toLocaleLowerCase('tr-TR')
-      const matchesSearch =
-        !normalizedSearch || searchableText.includes(normalizedSearch)
-
-      return matchesType && matchesCategory && matchesSearch
-    })
-  }, [monthlyTransactions, searchTerm, typeFilter, categoryFilter])
+  const filteredTransactions = useMemo(
+    () => filterTransactions(monthlyTransactions, {
+      searchTerm,
+      type: typeFilter,
+      category: categoryFilter,
+    }),
+    [monthlyTransactions, searchTerm, typeFilter, categoryFilter]
+  )
 
   const balance = totalIncome - totalExpense
   const budgetLimit = monthlyBudgets[selectedMonth] || 0
@@ -431,24 +404,7 @@ function App() {
 
     try {
       const backup = JSON.parse(await file.text())
-      const hasValidTransactions =
-        Array.isArray(backup.transactions) &&
-        backup.transactions.every((item) =>
-          item &&
-          ['income', 'expense'].includes(item.type) &&
-          typeof item.category === 'string' &&
-          Number.isFinite(Number(item.amount)) &&
-          typeof item.date === 'string'
-        )
-      const hasValidBudgets =
-        backup.monthlyBudgets &&
-        typeof backup.monthlyBudgets === 'object' &&
-        !Array.isArray(backup.monthlyBudgets)
-      const hasValidGoals =
-        backup.savingsGoals === undefined ||
-        Array.isArray(backup.savingsGoals)
-
-      if (!hasValidTransactions || !hasValidBudgets || !hasValidGoals) {
+      if (!isValidBackup(backup)) {
         throw new Error('Geçersiz yedek biçimi')
       }
 
