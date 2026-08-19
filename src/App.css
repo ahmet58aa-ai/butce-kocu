@@ -358,6 +358,43 @@ main {
   padding: 25px;
 }
 
+.transaction-filters {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 170px 190px;
+  gap: 10px;
+  margin: 18px 0 8px;
+}
+
+.transaction-filters input,
+.transaction-filters select {
+  width: 100%;
+  height: 42px;
+  border: 1px solid #dce3ec;
+  border-radius: 10px;
+  padding: 0 12px;
+  background: white;
+  color: #27364d;
+  font: inherit;
+  outline: none;
+}
+
+.transaction-filters input:focus,
+.transaction-filters select:focus {
+  border-color: #536077;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .section-title {
   display: flex;
   justify-content: space-between;
@@ -634,6 +671,10 @@ main {
 
   .transaction-right {
     min-width: 110px;
+  }
+
+  .transaction-filters {
+    grid-template-columns: 1fr;
   }
 
   .expense-analysis .section-title,

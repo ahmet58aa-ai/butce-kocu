@@ -48,6 +48,9 @@ function App() {
   })
   const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false)
   const [budgetInput, setBudgetInput] = useState('')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [typeFilter, setTypeFilter] = useState('all')
+  const [categoryFilter, setCategoryFilter] = useState('all')
 
   const [form, setForm] = useState({
     amount: '',
@@ -104,6 +107,27 @@ function App() {
       }))
       .sort((a, b) => b.amount - a.amount)
   }, [monthlyTransactions, totalExpense])
+
+  const availableCategories = useMemo(() => {
+    return [...new Set(monthlyTransactions.map((item) => item.category))]
+      .sort((a, b) => a.localeCompare(b, 'tr'))
+  }, [monthlyTransactions])
+
+  const filteredTransactions = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLocaleLowerCase('tr-TR')
+
+    return monthlyTransactions.filter((item) => {
+      const matchesType = typeFilter === 'all' || item.type === typeFilter
+      const matchesCategory =
+        categoryFilter === 'all' || item.category === categoryFilter
+      const searchableText = `${item.category} ${item.note || ''}`
+        .toLocaleLowerCase('tr-TR')
+      const matchesSearch =
+        !normalizedSearch || searchableText.includes(normalizedSearch)
+
+      return matchesType && matchesCategory && matchesSearch
+    })
+  }, [monthlyTransactions, searchTerm, typeFilter, categoryFilter])
 
   const balance = totalIncome - totalExpense
   const budgetLimit = monthlyBudgets[selectedMonth] || 0
@@ -412,19 +436,66 @@ function App() {
 
         <section className="transactions">
           <div className="section-title">
-            <h3>Son İşlemler</h3>
-            <button>Tümünü Gör</button>
+            <div>
+              <p className="section-eyebrow">{filteredTransactions.length} sonuç</p>
+              <h3>İşlemler</h3>
+            </div>
           </div>
 
-          {monthlyTransactions.length === 0 && (
+          <div className="transaction-filters">
+            <label className="search-field">
+              <span className="sr-only">İşlemlerde ara</span>
+              <input
+                type="search"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Kategori veya açıklama ara"
+              />
+            </label>
+
+            <label>
+              <span className="sr-only">İşlem türü</span>
+              <select
+                value={typeFilter}
+                onChange={(event) => setTypeFilter(event.target.value)}
+              >
+                <option value="all">Tüm türler</option>
+                <option value="income">Gelirler</option>
+                <option value="expense">Giderler</option>
+              </select>
+            </label>
+
+            <label>
+              <span className="sr-only">Kategori</span>
+              <select
+                value={categoryFilter}
+                onChange={(event) => setCategoryFilter(event.target.value)}
+              >
+                <option value="all">Tüm kategoriler</option>
+                {availableCategories.map((category) => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {filteredTransactions.length === 0 && (
             <div className="empty-state">
-              <span>📅</span>
-              <strong>{formatMonth(selectedMonth)} için işlem yok</strong>
-              <p>Bu aya ait ilk gelir veya harcamanı ekleyebilirsin.</p>
+              <span>🔎</span>
+              <strong>
+                {monthlyTransactions.length === 0
+                  ? `${formatMonth(selectedMonth)} için işlem yok`
+                  : 'Filtrelere uygun işlem bulunamadı'}
+              </strong>
+              <p>
+                {monthlyTransactions.length === 0
+                  ? 'Bu aya ait ilk gelir veya harcamanı ekleyebilirsin.'
+                  : 'Arama metnini veya filtreleri değiştirmeyi dene.'}
+              </p>
             </div>
           )}
 
-          {monthlyTransactions.map((transaction) => (
+          {filteredTransactions.map((transaction) => (
             <div className="transaction" key={transaction.id}>
               <div>
                 <strong>{transaction.category}</strong>
