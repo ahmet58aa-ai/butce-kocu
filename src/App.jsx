@@ -75,6 +75,23 @@ function App() {
       .reduce((sum, item) => sum + item.amount, 0)
   }, [monthlyTransactions])
 
+  const expenseBreakdown = useMemo(() => {
+    const categoryTotals = monthlyTransactions
+      .filter((item) => item.type === 'expense')
+      .reduce((totals, item) => {
+        totals[item.category] = (totals[item.category] || 0) + item.amount
+        return totals
+      }, {})
+
+    return Object.entries(categoryTotals)
+      .map(([category, amount]) => ({
+        category,
+        amount,
+        percentage: totalExpense > 0 ? (amount / totalExpense) * 100 : 0,
+      }))
+      .sort((a, b) => b.amount - a.amount)
+  }, [monthlyTransactions, totalExpense])
+
   const balance = totalIncome - totalExpense
 
   const savingRate =
@@ -267,6 +284,57 @@ function App() {
               ? 'Gelir veya harcama ekleyerek aylık durumunu takip etmeye başlayabilirsin.'
               : `Toplam gelirinin %${savingRate} kadarı şu anda elinde kalıyor. Harcamalarını düzenli takip ederek tasarruf oranını artırabilirsin.`}
           </p>
+        </section>
+
+        <section className="expense-analysis">
+          <div className="section-title">
+            <div>
+              <p className="section-eyebrow">Aylık analiz</p>
+              <h3>Harcama dağılımı</h3>
+            </div>
+
+            <strong>{formatMoney(totalExpense)}</strong>
+          </div>
+
+          {expenseBreakdown.length > 0 ? (
+            <>
+              <div className="category-chart">
+                {expenseBreakdown.map((item, index) => (
+                  <div className="category-row" key={item.category}>
+                    <div className="category-meta">
+                      <span>{item.category}</span>
+                      <span>
+                        %{item.percentage.toFixed(0)} · {formatMoney(item.amount)}
+                      </span>
+                    </div>
+
+                    <div
+                      className="category-track"
+                      role="progressbar"
+                      aria-label={`${item.category} harcaması`}
+                      aria-valuenow={Math.round(item.percentage)}
+                      aria-valuemin="0"
+                      aria-valuemax="100"
+                    >
+                      <div
+                        className={`category-bar category-bar-${(index % 5) + 1}`}
+                        style={{ width: `${item.percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <p className="analysis-note">
+                En yüksek harcaman <strong>{expenseBreakdown[0].category}</strong>
+                {' '}kategorisinde: {formatMoney(expenseBreakdown[0].amount)}.
+              </p>
+            </>
+          ) : (
+            <div className="analysis-empty">
+              Bu ay gider eklediğinde kategori dağılımını burada göreceksin.
+            </div>
+          )}
         </section>
 
         <section className="transactions">
